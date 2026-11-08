@@ -40,7 +40,7 @@ const pvHeader = (c,back)=>{
   const st=S.settings||{};
   return `<header class="pv-top">
     ${back?`<button class="pv-back" data-pv-go="${back}" aria-label="Retour">←</button>`:""}
-    <div style="min-width:0"><div class="pv-clinic">${esc(st.clinic||"Votre clinique")}</div>
+    <div style="min-width:0"><div class="pv-clinic">${esc(st.clinic||"Votre entraîneur(e)")}</div>
       ${back?"":`<h1 class="pv-h1">Bonjour ${esc(first(c))}</h1><div class="pv-date">${esc(fmtDate(now))}</div>`}</div></header>`;
 };
 function pvWeek(c,p){
@@ -66,7 +66,7 @@ function pvHome(c){
     <section class="pv-card">
       <span class="pv-eyebrow">Votre entraîneur(e)</span>
       <p><b>${esc(st.kin||"Nom de l'entraîneur(e)")}</b></p>
-      <p class="pv-muted">${esc(st.contact||"Téléphone et courriel de la clinique")}</p>
+      <p class="pv-muted">${esc(st.contact||"Téléphone et courriel de votre entraîneur(e)")}</p>
       <p class="pv-muted" style="font-size:.85rem">Arrêtez un exercice et contactez-nous si la douleur dépasse 5/10 ou augmente d'une séance à l'autre.</p>
     </section>
   </div>`;

@@ -391,7 +391,7 @@ function progHistory(c){
         <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;align-items:center">
           ${act||c.locked?"":`<button class="btn sm" data-activate="${c.id}:${p.id}">Rendre actuel</button>`}
           ${progLocked(c,p)?"":`<button class="icon-btn" data-lock-prog="${c.id}:${p.id}" aria-label="Verrouiller ${esc(p.name)}" title="Verrouiller">${ico("lock")}</button>`}
-          <button class="icon-btn" data-build-prog="${c.id}:${p.id}" aria-label="Ouvrir ${esc(p.name)}" title="Ouvrir dans le constructeur">${I.edit}</button>
+          <button class="icon-btn" data-build-prog="${c.id}:${p.id}" aria-label="Ouvrir ${esc(p.name)}" title="Modifier le programme">${I.edit}</button>
           <button class="icon-btn" data-export="${c.id}:${p.id}" aria-label="Exporter ${esc(p.name)} en PDF" title="Exporter en PDF" ${p.ex.length?"":"disabled"}>${I.pdf}</button>
           <button class="icon-btn" data-cf-mail="${c.id}:${p.id}" aria-label="Envoyer ${esc(p.name)} par courriel" title="Envoyer par courriel" ${p.ex.length?"":"disabled"}>${I.mail}</button>
           ${act||progLocked(c,p)?"":`<button class="icon-btn" data-del-prog="${c.id}:${p.id}" aria-label="Supprimer ${esc(p.name)}" title="Supprimer">${I.trash}</button>`}
@@ -400,19 +400,19 @@ function progHistory(c){
   </section>`;
 }
 
-/* ---------- Constructeur ---------- */
+/* ---------- Conception du programme ---------- */
 function libFiltered(sel,q){
   q=q.trim().toLowerCase();
   return EXERCISES.filter(e=>anyOf(sel,e.mg)&&(!q||e.n.toLowerCase().includes(q)||e.eq.toLowerCase().includes(q)||e.m.toLowerCase().includes(q)));
 }
 function vBuilder(){
   const c=C(ui.builder);
-  if(!c) return `<div class="head"><div class="head-l"><span class="eyebrow">Constructeur de programme</span><h1>Programmes</h1></div></div>`+emptyClients("Un programme appartient toujours à un client. Ajoutez d'abord un client, puis choisissez ses exercices ici.");
+  if(!c) return `<div class="head"><div class="head-l"><span class="eyebrow">Conception du programme</span><h1>Programmes</h1></div></div>`+emptyClients("Un programme appartient toujours à un client. Ajoutez d'abord un client, puis choisissez ses exercices ici.");
   const p=BP(), isActive=p.id===c.active, L=progLocked(c,p), off=L?"disabled":"";
   const list=libFiltered(ui.bM,ui.bQ);
   const total=p.ex.reduce((a,e)=>a+(+e.s||0),0);
   return `
-  <div class="head"><div class="head-l"><span class="eyebrow">Constructeur de programme</span><h1>${esc(p.name)}</h1></div>
+  <div class="head"><div class="head-l"><span class="eyebrow">Conception du programme</span><h1>${esc(p.name)}</h1></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">${c.locked?"":`<button class="btn" data-new-prog="${c.id}">${I.plus} Nouveau programme</button>`}${L?"":`<button class="btn" data-lock-prog="${c.id}:${p.id}">${ico("lock")} Verrouiller</button>`}<button class="btn" data-preview="${c.id}:${p.id}">Aperçu page client</button>${p.ex.length?`<button class="btn" data-cf-mail="${c.id}:${p.id}">${I.mail} Envoyer par courriel</button>`:""}<button class="btn primary" data-export="${c.id}:${p.id}">${I.pdf} Exporter en PDF</button></div></div>
   <div class="builder">
     <div style="display:flex;flex-direction:column;gap:18px;min-width:0">

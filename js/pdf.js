@@ -60,7 +60,7 @@ async function buildPDF(c,prog,opt){
 
   /* En-tête de la première page */
   doc.setFillColor(...acc); doc.rect(0,0,PW,4,"F");
-  set(9,"bold",acc); doc.text(pdfTxt(settings.clinic||"Clinique de réadaptation"),M,15);
+  set(9,"bold",acc); doc.text(pdfTxt(settings.clinic||"Kinoza"),M,15);
   set(8.5,"normal",muted); doc.text("Remis le "+dateTxt,PW-M,15,{align:"right"});
   set(21,"bold"); doc.text("Programme d'exercices à domicile",M,27);
   set(11,"normal",muted); doc.text(pdfTxt(prog.name),M,34);
@@ -175,16 +175,16 @@ function openExport(id,pid){
       <button type="button" class="icon-btn" data-close aria-label="Fermer">${I.x}</button></div>
     <input type="hidden" id="ex-id" value="${c.id}"><input type="hidden" id="ex-pid" value="${prog.id}">
     <div class="form-grid">
-      <div class="field"><label for="ex-clinic">Nom de la clinique</label><input class="inp" id="ex-clinic" value="${esc(st.clinic)}" placeholder="Ex. Clinique Mouvement"></div>
+      <div class="field"><label for="ex-clinic">Nom de l'entreprise ou de la clinique</label><input class="inp" id="ex-clinic" value="${esc(st.clinic)}" placeholder="Ex. Studio Mouvement"></div>
       <div class="field"><label for="ex-kin">Entraîneur(e)</label><input class="inp" id="ex-kin" value="${esc(st.kin)}" placeholder="Prénom Nom"></div>
-      <div class="field span2"><label for="ex-contact">Coordonnées affichées sur le document</label><input class="inp" id="ex-contact" value="${esc(st.contact)}" placeholder="Ex. 418 555-0123 · info@clinique.ca"></div>
+      <div class="field span2"><label for="ex-contact">Coordonnées affichées sur le document</label><input class="inp" id="ex-contact" value="${esc(st.contact)}" placeholder="Ex. 418 555-0123 · info@monentreprise.ca"></div>
     </div>
     <fieldset class="opts"><legend class="eyebrow">Contenu</legend>
       <label><input type="checkbox" id="ex-steps" ${st.steps===false?"":"checked"}> Étapes d'exécution détaillées pour chaque exercice</label>
       <label><input type="checkbox" id="ex-journal" ${st.journal===false?"":"checked"}> Journal de suivi sur 4 semaines (cases à cocher, date et douleur)</label>
       <label><input type="checkbox" id="ex-notes" ${c.notes?"":"disabled"}> Notes cliniques et précautions du dossier${c.notes?"":` <span class="muted">(aucune note)</span>`}</label>
     </fieldset>
-    <p class="muted" style="font-size:.82rem">Le nom de la clinique, le nom de l'entraîneur(e) et les coordonnées sont conservés pour les prochains exports.</p>
+    <p class="muted" style="font-size:.82rem">Le nom de l'entreprise, le nom de l'entraîneur(e) et les coordonnées sont conservés pour les prochains exports.</p>
     <p class="err" id="ex-err" ${prog.ex.length?"hidden":""}>${prog.ex.length?"":"Ajoutez au moins un exercice au programme avant d'exporter."}</p>
     <div class="form-actions">
       <button type="button" class="btn" data-close>Annuler</button>

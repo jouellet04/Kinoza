@@ -139,7 +139,7 @@ async function savePdf(blob,name){
 async function noticePDF(c){
   const st=S.settings||{}, r=rprp(), years=st.retentionYears||5;
   const blob=await simplePDF("Avis de confidentialité et consentement",async a=>{
-    a.p(`Version ${NOTICE_VERSION}. Ce document vous explique comment ${st.clinic||"la clinique"} recueille, utilise et protège vos renseignements personnels, conformément à la Loi sur la protection des renseignements personnels dans le secteur privé (Québec).`,{muted:true});
+    a.p(`Version ${NOTICE_VERSION}. Ce document vous explique comment ${st.clinic||"votre entraîneur(e)"} recueille, utilise et protège vos renseignements personnels, conformément à la Loi sur la protection des renseignements personnels dans le secteur privé (Québec).`,{muted:true});
     a.kv("Client",c?c.n:""); if(c&&isMinor(c)) a.p(`Le client a moins de ${MINOR_AGE} ans : ce consentement doit être donné par le parent ou le tuteur.`,{bold:true});
     a.h2("Pourquoi nous recueillons vos renseignements");
     a.bullet("Constituer votre dossier, évaluer votre condition et préparer vos programmes d'exercices.");
@@ -148,7 +148,7 @@ async function noticePDF(c){
     a.h2("Quels renseignements");
     a.p("Nom, adresse courriel si vous la donnez, date de naissance, date de début du suivi, notes cliniques et précautions, programmes d'exercices, séances réalisées et douleur rapportée.");
     a.h2("Qui y a accès et où ils sont conservés");
-    a.p(`Seul votre entraîneur(e)${st.kin?` (${st.kin})`:""} y a accès, pour vous offrir le service. ${st.storage||"Les dossiers sont conservés sur l'ordinateur de la clinique, au Québec, chiffrés et protégés par mot de passe."} Aucun renseignement n'est communiqué à un tiers sans votre consentement exprès, sauf dans les cas prévus par la loi (par exemple une urgence mettant en danger votre vie ou votre santé).`);
+    a.p(`Seul votre entraîneur(e)${st.kin?` (${st.kin})`:""} y a accès, pour vous offrir le service. ${st.storage||"Les dossiers sont conservés sur l'ordinateur de l'entreprise, au Québec, chiffrés et protégés par mot de passe."} Aucun renseignement n'est communiqué à un tiers sans votre consentement exprès, sauf dans les cas prévus par la loi (par exemple une urgence mettant en danger votre vie ou votre santé).`);
     a.h2("Durée de conservation");
     a.p(`Votre dossier est conservé ${years} an${years>1?"s":""} après le dernier service, puis détruit de façon sécuritaire.`);
     a.h2("Vos droits");
@@ -388,9 +388,9 @@ function vCompliance(){
     <form id="cf-rprp-form" class="form-grid" novalidate>
       <div class="field"><label for="rp-name">Nom</label><input class="inp" id="rp-name" value="${esc(r.name||st.kin||"")}"></div>
       <div class="field"><label for="rp-title">Titre</label><input class="inp" id="rp-title" value="${esc(r.title||"Responsable de la protection des renseignements personnels")}"></div>
-      <div class="field span2"><label for="rp-contact">Coordonnées publiques</label><input class="inp" id="rp-contact" value="${esc(r.contact||st.contact||"")}" placeholder="Ex. confidentialite@clinique.ca · 418 555-0123"></div>
+      <div class="field span2"><label for="rp-contact">Coordonnées publiques</label><input class="inp" id="rp-contact" value="${esc(r.contact||st.contact||"")}" placeholder="Ex. confidentialite@monentreprise.ca · 418 555-0123"></div>
       <div class="field"><label for="rp-years">Durée de conservation après le dernier service</label><select class="inp" id="rp-years">${[1,2,3,5,7,10].map(y=>`<option value="${y}" ${(+st.retentionYears||5)===y?"selected":""}>${y} an${y>1?"s":""}</option>`).join("")}</select></div>
-      <div class="field"><label for="rp-storage">Lieu de conservation (dans l'avis)</label><input class="inp" id="rp-storage" value="${esc(st.storage||"Les dossiers sont conservés sur l'ordinateur de la clinique, au Québec, chiffrés et protégés par mot de passe.")}"></div>
+      <div class="field"><label for="rp-storage">Lieu de conservation (dans l'avis)</label><input class="inp" id="rp-storage" value="${esc(st.storage||"Les dossiers sont conservés sur l'ordinateur de l'entreprise, au Québec, chiffrés et protégés par mot de passe.")}"></div>
       <div class="span2" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="submit">Enregistrer</button><button class="btn" type="button" data-go-retention>Voir les échéances</button><button class="btn" type="button" data-cf-notice="">${I.pdf} Modèle d'avis de confidentialité (PDF)</button></div>
     </form>
     <p class="muted" style="font-size:.82rem">Vérifiez la durée de conservation exigée par votre fédération professionnelle ou votre assureur.</p>
