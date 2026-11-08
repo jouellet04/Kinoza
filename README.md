@@ -1,6 +1,6 @@
 # Kinoza
 
-Un outil pour planifier des programmes d'exercices en clinique et en réadaptation.
+Un outil pour planifier des programmes d'exercices, pour les entraîneurs, les kinésiologues et les autres professionnels du mouvement.
 Il fonctionne dans le navigateur, sans compte et sans installation.
 
 - Banque d'exercices illustrés, avec filtres par groupe musculaire
