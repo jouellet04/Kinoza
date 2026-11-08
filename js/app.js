@@ -40,13 +40,15 @@ function migrate(data){
 }
 migrate(S);
 
-/* Noms et étapes personnalisés : S.exEdits = {id:{n,steps}}, appliqués par-dessus la bibliothèque d'origine */
-const EX_ORIG = Object.fromEntries(EXERCISES.map(e=>[e.id,{n:e.n,steps:[...e.steps]}]));
+/* Noms, étapes et consigne clé personnalisés : S.exEdits = {id:{n,steps,cue}}, appliqués par-dessus la bibliothèque d'origine.
+   cue absente = consigne d'origine ; cue "" = consigne retirée */
+const EX_ORIG = Object.fromEntries(EXERCISES.map(e=>[e.id,{n:e.n,steps:[...e.steps],cue:e.cue}]));
 function applyExEdits(){
   for(const e of EXERCISES){
     const o=EX_ORIG[e.id], m=(S.exEdits||{})[e.id];
     e.n = m?.n || o.n;
     e.steps = m?.steps?.length ? [...m.steps] : [...o.steps];
+    e.cue = typeof m?.cue==="string" ? m.cue : o.cue;
   }
 }
 const isEdited = id=>!!(S.exEdits&&S.exEdits[id]);
@@ -184,7 +186,7 @@ function painChart(p){
     ${g}<path d="${d} L${x(p.length-1)} ${y(0)} L${L} ${y(0)}Z" fill="var(--accent)" opacity=".08"/>
     <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round"/>${dots}</svg>`;
 }
-const doseTxt = e=>`${e.s} × ${e.rep}${e.t&&e.t!=="—"?" · "+e.t:""}`;
+const doseTxt = e=>{const s=String(e.s??"").trim(), r=String(e.rep??"").trim(); return [s&&r?`${s} × ${r}`:s?`${s} série${+s>1?"s":""}`:r, e.t&&e.t!=="—"?e.t:""].filter(Boolean).join(" · ")};
 
 const ICONS={
   backup:'<path d="M12 3v11M7.5 9.5 12 14l4.5-4.5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>',
@@ -199,6 +201,7 @@ const NAV_ICON={backup:"lock",compliance:"shield"};
 const NAV=[["dash","Tableau de bord"],["clients","Clients"],["builder","Programmes"],["library","Bibliothèque"],["compliance","Conformité"],["backup","Sécurité"]];
 const ico = k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>`;
 const I = {
+  grip:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>',
   up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 15l6-6 6 6"/></svg>',
   down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>',
   x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
@@ -313,7 +316,7 @@ function vClient(){
     <div class="panel-h"><div><span class="eyebrow">Programme actuel · ${esc(AP(c).name)}</span><h2 style="margin-top:4px">Phase et objectif</h2></div></div>
     <div class="meta" style="grid-template-columns:minmax(0,1fr) minmax(0,1.6fr)">
       ${phaseField("phase-sel",AP(c).phase,"Phase",PL)}
-      <div class="field"><label for="obj-sel">Objectif du programme</label><input class="inp" id="obj-sel" autocomplete="off" value="${esc(AP(c).dx)}" placeholder="Ex. reprendre la course sans douleur d'ici 8 semaines" ${PL?"disabled":""}></div>
+      <div class="field"><label for="obj-sel">Objectif du programme</label><textarea class="inp grow" id="obj-sel" rows="1" placeholder="Ex. reprendre la course sans douleur d'ici 8 semaines" ${PL?"disabled":""}>${esc(AP(c).dx)}</textarea></div>
     </div>
     ${PL?`<p class="muted" style="font-size:.82rem">Programme verrouillé : la phase et l'objectif ne peuvent plus changer.</p>`:""}
   </section>
@@ -424,28 +427,30 @@ function vBuilder(){
           <div class="field"><label for="b-name">Nom du programme</label><input class="inp" id="b-name" value="${esc(p.name)}" ${off}></div>
           ${phaseField("b-phase",p.phase,"Phase",L)}
         </div>
-        <div class="field"><label for="b-dx">Objectif du programme</label><input class="inp" id="b-dx" autocomplete="off" value="${esc(p.dx)}" placeholder="Ex. reprendre la course sans douleur d'ici 8 semaines" ${off}></div>
+        <div class="field"><label for="b-dx">Objectif du programme</label><textarea class="inp grow" id="b-dx" rows="1" placeholder="Ex. reprendre la course sans douleur d'ici 8 semaines" ${off}>${esc(p.dx)}</textarea></div>
         <div class="field"><label id="freq-l">Séances à domicile par semaine</label>
           <div class="days" role="group" aria-labelledby="freq-l">${[1,2,3,4,5,6,7].map(n=>`<button data-freq="${n}" aria-pressed="${n>=fMin(p)&&n<=fMax(p)}" aria-label="${n} fois par semaine" ${off}>${n}</button>`).join("")}</div>
           <span class="muted" style="font-size:.8rem">Choisissez un nombre, ou cochez deux nombres pour une plage, par exemple 2 et 3 pour « 2 à 3 fois par semaine ».</span></div>
         <div class="muted" style="font-size:.85rem"><span class="num">${p.ex.length}</span> exercices · <span class="num">${total}</span> séries par séance · <span class="num">${fLabel(p)}</span> séance${fMax(p)>1?"s":""} par semaine</div>
+        ${L?"":`<span class="muted" style="font-size:.8rem">Pour retirer un élément d'un exercice (séries, répétitions, tempo, repos ou charge), videz son champ : il n'apparaîtra plus dans le programme, le PDF ni la page client.</span>`}
       </section>
       <div class="prog-list" id="prog-list">
         ${p.ex.length?p.ex.map((e,i)=>{const x=exView(p,e.id);return `
-        <article class="ex-card">
+        <article class="ex-card" data-idx="${i}">
           <span class="ord">${String(i+1).padStart(2,"0")}</span><button class="open-fig" data-open="${e.id}" aria-label="Voir la fiche">${fig(e.id)}</button>
           <div class="ex-body">
             <div class="ex-title"><b>${esc(x.n)}</b><span class="chip">${esc(mgTxt(x))}</span><span class="muted" style="font-size:.8rem">${x.eq}</span></div>
             <div class="dosage">
-              <div class="field"><label for="f-s-${i}">Séries</label><input class="inp" id="f-s-${i}" data-f="s" data-i="${i}" value="${esc(e.s)}" inputmode="numeric" ${off}></div>
-              <div class="field"><label for="f-rep-${i}">Rép./durée</label><input class="inp" id="f-rep-${i}" data-f="rep" data-i="${i}" value="${esc(e.rep)}" ${off}></div>
-              <div class="field"><label for="f-t-${i}">Tempo</label><input class="inp" id="f-t-${i}" data-f="t" data-i="${i}" value="${esc(e.t)}" title="Excentrique-pause-concentrique, en secondes" ${off}></div>
-              <div class="field"><label for="f-rest-${i}">Repos (s)</label><input class="inp" id="f-rest-${i}" data-f="rest" data-i="${i}" value="${esc(e.rest)}" inputmode="numeric" ${off}></div>
-              <div class="field"><label for="f-load-${i}">Charge</label><input class="inp" id="f-load-${i}" data-f="load" data-i="${i}" value="${esc(e.load)}" ${off}></div>
+              <div class="field"><label for="f-s-${i}">Séries</label><input class="inp" id="f-s-${i}" data-f="s" data-i="${i}" value="${esc(e.s)}" placeholder="—" inputmode="numeric" ${off}></div>
+              <div class="field"><label for="f-rep-${i}">Rép./durée</label><input class="inp" id="f-rep-${i}" data-f="rep" data-i="${i}" value="${esc(e.rep)}" placeholder="—" ${off}></div>
+              <div class="field"><label for="f-t-${i}">Tempo</label><input class="inp" id="f-t-${i}" data-f="t" data-i="${i}" value="${esc(e.t)}" placeholder="—" title="Excentrique-pause-concentrique, en secondes" ${off}></div>
+              <div class="field"><label for="f-rest-${i}">Repos (s)</label><input class="inp" id="f-rest-${i}" data-f="rest" data-i="${i}" value="${esc(e.rest)}" placeholder="—" inputmode="numeric" ${off}></div>
+              <div class="field"><label for="f-load-${i}">Charge</label><input class="inp" id="f-load-${i}" data-f="load" data-i="${i}" value="${esc(e.load)}" placeholder="—" ${off}></div>
             </div>
             <input class="inp" id="f-note-${i}" data-f="note" data-i="${i}" value="${esc(e.note)}" placeholder="Consigne pour le client (ex. arrêter si douleur > 4/10)" aria-label="Consigne" ${off}>
           </div>
           <div class="ex-tools" ${L?"hidden":""}>
+            ${p.ex.length>1?`<button class="icon-btn drag-h" data-reorder="${i}" aria-label="Glisser pour déplacer" title="Glisser pour déplacer">${I.grip}</button>`:""}
             <button class="icon-btn" data-mv="${i}" data-dir="-1" aria-label="Monter" ${i===0?"disabled":""}>${I.up}</button>
             <button class="icon-btn" data-mv="${i}" data-dir="1" aria-label="Descendre" ${i===p.ex.length-1?"disabled":""}>${I.down}</button>
             <button class="icon-btn" data-rm="${i}" aria-label="Retirer">${I.x}</button>
@@ -507,7 +512,7 @@ function openSheet(id){
     <div class="sheet-body">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
         <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="eyebrow">${esc(e.mg.join(" · "))} · ${e.eq}${isEdited(id)?` · <span class="chip warn">Modifié</span>`:""}</span><h2 id="sheet-t" style="font-size:1.4rem">${esc(e.n)}</h2></div>
-        <div style="display:flex;gap:4px"><button class="icon-btn" data-ex-edit="${id}" aria-label="Modifier le nom et les étapes" title="Modifier le nom et les étapes">${I.edit}</button>
+        <div style="display:flex;gap:4px"><button class="icon-btn" data-ex-edit="${id}" aria-label="Modifier l'exercice" title="Modifier le nom, les étapes et la consigne clé">${I.edit}</button>
         <button class="icon-btn" data-close aria-label="Fermer">${I.x}</button></div></div>
       <p>${esc(e.desc)}</p>
       <div class="facts">
@@ -516,9 +521,9 @@ function openSheet(id){
         <div><span class="eyebrow">Phase</span><span>Dès la phase ${e.ph+1} · ${PHASES[e.ph]}</span></div>
         <div><span class="eyebrow">Charge</span><span>${esc(e.d.load)}</span></div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="eyebrow">Exécution</span><button class="link" data-ex-edit="${id}" style="font-size:.85rem">Modifier le nom et les étapes</button></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="eyebrow">Exécution</span><button class="link" data-ex-edit="${id}" style="font-size:.85rem">Modifier le nom, les étapes et la consigne</button></div>
         <ol class="steps">${e.steps.map(s=>`<li>${esc(s)}</li>`).join("")}</ol></div>
-      <div class="cue-box"><span class="eyebrow">Consigne clé</span><span>${esc(e.cue)}</span></div>
+      ${e.cue?`<div class="cue-box"><span class="eyebrow">Consigne clé</span><span>${esc(e.cue)}</span></div>`:""}
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         ${C(ui.builder)?`<button class="btn primary" data-add-sheet="${id}">${I.plus} Ajouter à « ${esc(BP().name)} »</button>`:`<span class="muted" style="font-size:.88rem">Ajoutez un client pour utiliser cet exercice dans un programme.</span>`}</div>
     </div></div>`;
@@ -539,12 +544,15 @@ function stopAnim(){if(anim){cancelAnimationFrame(anim);anim=null}}
 function closeSheet(){stopAnim();const sh=$("#sheet");sh.hidden=true;sh.innerHTML="";document.body.style.overflow=""}
 
 /* ---------- Rendu ---------- */
+/* Zone de texte qui grandit avec son contenu (objectif du programme) */
+function fitArea(t){ t.style.height="auto"; if(t.value) t.style.height=(t.scrollHeight+2)+"px" }
 function render(){
   if(!DK) return;   // rien n'est affiché tant que l'application est verrouillée
   syncSel();
   renderNav();
   const v={dash:vDash,clients:vClients,client:vClient,builder:vBuilder,library:vLibrary,backup:vBackup,compliance:vCompliance}[ui.view]||vDash;
   $("#main").innerHTML=v();
+  document.querySelectorAll("#main textarea.grow").forEach(fitArea);
   try{localStorage.setItem(VIEW_KEY,ui.view==="client"?"clients":ui.view)}catch(e){}
 }
 function go(view){ui.view=view;render();window.scrollTo(0,0)}
@@ -595,7 +603,7 @@ function confirmDelProg(key){
   sh.hidden=false; document.body.style.overflow="hidden"; sh.querySelector("[data-close]").focus();
 }
 
-/* ---------- Modifier un exercice (nom et étapes) ---------- */
+/* ---------- Modifier un exercice (nom, étapes et consigne clé) ---------- */
 const stepRow = (v,i)=>`<div class="step-row"><span class="step-n num">${i+1}</span>
   <textarea class="inp" rows="2" aria-label="Étape ${i+1}">${esc(v)}</textarea>
   <button type="button" class="icon-btn" data-step-del aria-label="Retirer l'étape ${i+1}" title="Retirer l'étape">${I.x}</button></div>`;
@@ -613,6 +621,10 @@ function openExEdit(id){
       <div id="exedit-steps" class="step-list">${e.steps.map(stepRow).join("")}</div>
       <button type="button" class="btn sm" data-step-add style="align-self:flex-start">${I.plus} Ajouter une étape</button>
       <span class="err" id="exedit-s-err" hidden>Gardez au moins une étape.</span></div>
+    <div class="field"><label for="exedit-cue">Consigne clé</label>
+      <div class="step-row" style="grid-template-columns:minmax(0,1fr) 30px"><textarea class="inp" id="exedit-cue" rows="2" placeholder="Aucune consigne clé">${esc(e.cue||"")}</textarea>
+        <button type="button" class="icon-btn" data-cue-clear aria-label="Retirer la consigne clé" title="Retirer la consigne clé">${I.x}</button></div>
+      <span class="muted" style="font-size:.8rem">Laissez vide pour retirer la consigne de la fiche et du PDF.${e.cue!==o.cue&&o.cue?` Consigne d'origine : ${esc(o.cue)}`:""}</span></div>
     <p class="muted" style="font-size:.85rem">Les changements s'appliquent partout : bibliothèque, programmes et PDF. Ils sont enregistrés dans ce navigateur et inclus dans vos sauvegardes.</p>
     <div class="form-actions">
       ${isEdited(id)?`<button type="button" class="btn" data-ex-reset="${id}" style="margin-right:auto">Rétablir l'original</button>`:""}
@@ -638,10 +650,11 @@ function submitExEdit(){
   const n=$("#exedit-n").value.trim();
   const steps=[...document.querySelectorAll("#exedit-steps textarea")].map(t=>t.value.trim()).filter(Boolean);
   $("#exedit-n-err").hidden=!!n; $("#exedit-s-err").hidden=steps.length>0;
+  const cue=$("#exedit-cue").value.trim();
   if(!n||!steps.length) return;
   S.exEdits=S.exEdits||{};
-  const same = n===o.n && steps.length===o.steps.length && steps.every((s,i)=>s===o.steps[i]);
-  if(same) delete S.exEdits[id]; else S.exEdits[id]={n,steps};
+  const same = n===o.n && cue===o.cue && steps.length===o.steps.length && steps.every((s,i)=>s===o.steps[i]);
+  if(same) delete S.exEdits[id]; else S.exEdits[id]={n,steps,cue};
   applyExEdits(); save(); render(); openSheet(id); toast(same?"Aucun changement par rapport à l'original":"Exercice modifié");
 }
 function resetExEdit(id){
@@ -757,6 +770,7 @@ document.addEventListener("click",ev=>{
   if(b.id==="bk-cancel"){pendingImport=null;render();return}
   if(d.exEdit){openExEdit(d.exEdit);return}
   if(d.stepAdd!==undefined){addStepRow();return}
+  if(d.cueClear!==undefined){const t=$("#exedit-cue"); t.value=""; t.focus(); return}
   if(d.stepDel!==undefined){const rows=document.querySelectorAll("#exedit-steps .step-row"); if(rows.length>1) b.closest(".step-row").remove(); renumberSteps(); return}
   if(d.exReset){resetExEdit(d.exReset);return}
   if(d.exBack){openSheet(d.exBack);return}
@@ -790,6 +804,7 @@ document.addEventListener("keydown",ev=>{if(ev.key==="Escape"&&!$("#sheet").hidd
 $("#sheet").addEventListener("click",ev=>{if(ev.target.id==="sheet")closeSheet()});
 document.addEventListener("input",ev=>{
   const t=ev.target;
+  if(t.classList?.contains("grow")) fitArea(t);
   if((t.dataset.f||t.id==="b-name"||t.id==="b-dx")&&progLocked(C(ui.builder),BP())) return;
   if(t.dataset.f){const e=BP().ex[+t.dataset.i];e[t.dataset.f]=t.value;save()}
   else if(t.id==="b-name"){BP().name=t.value;save()}
@@ -821,6 +836,44 @@ document.addEventListener("change",ev=>{
 });
 /* Glisser-déposer depuis la bibliothèque */
 document.addEventListener("dragstart",ev=>{const it=ev.target.closest?.("[data-drag]");if(it){ev.dataTransfer.setData("text/plain",it.dataset.drag);ev.dataTransfer.effectAllowed="copy"}});
+/* Glisser un exercice par sa poignée pour changer l'ordre (souris, trackpad ou doigt) ; les flèches restent pour le clavier */
+let DRAG=null;
+document.addEventListener("pointerdown",ev=>{
+  const h=ev.target.closest?.("[data-reorder]"); if(!h||ev.button>0) return;
+  if(!guardProg()) return;
+  const card=h.closest(".ex-card"), list=card.parentElement;
+  ev.preventDefault(); h.setPointerCapture(ev.pointerId);
+  const r=card.getBoundingClientRect();
+  DRAG={h,card,list,dy:ev.clientY-r.top,y:ev.clientY,from:+card.dataset.idx};
+  card.classList.add("dragging"); list.classList.add("sorting");
+});
+function dragMove(y){
+  const {card,list}=DRAG; DRAG.y=y;
+  const sibs=[...list.querySelectorAll(".ex-card")].filter(x=>x!==card);
+  const before=sibs.find(x=>{const r=x.getBoundingClientRect(); return y<r.top+r.height/2});
+  if(before){ if(card.nextElementSibling!==before) list.insertBefore(card,before) }
+  else if(list.lastElementChild!==card) list.appendChild(card);
+  /* La carte suit le pointeur à partir de sa nouvelle place dans la liste */
+  card.style.transform=""; const slot=card.getBoundingClientRect().top;
+  card.style.transform=`translateY(${y-DRAG.dy-slot}px)`;
+}
+document.addEventListener("pointermove",ev=>{
+  if(!DRAG) return; ev.preventDefault(); dragMove(ev.clientY);
+  /* Défilement automatique près du haut ou du bas de l'écran */
+  const edge=60, v=ev.clientY<edge?-12:ev.clientY>innerHeight-edge?12:0;
+  clearInterval(DRAG.scroll); DRAG.scroll=v?setInterval(()=>{scrollBy(0,v); dragMove(DRAG.y)},16):null;
+});
+function dragEnd(){
+  if(!DRAG) return;
+  const {card,list,from}=DRAG; clearInterval(DRAG.scroll); DRAG=null;
+  card.classList.remove("dragging"); card.style.transform=""; list.classList.remove("sorting");
+  const order=[...list.querySelectorAll(".ex-card")].map(x=>+x.dataset.idx);
+  if(order.every((v,i)=>v===i)) return;
+  const a=BP().ex, copy=[...a]; order.forEach((o,i)=>{a[i]=copy[o]}); save(); render();
+  toast(`Exercice déplacé en position ${order.indexOf(from)+1}`);
+}
+document.addEventListener("pointerup",dragEnd);
+document.addEventListener("pointercancel",dragEnd);
 document.addEventListener("dragover",ev=>{const l=ev.target.closest?.("#prog-list");if(l){ev.preventDefault();l.classList.add("drop")}});
 document.addEventListener("dragleave",ev=>{const l=ev.target.closest?.("#prog-list");if(l&&!l.contains(ev.relatedTarget))l.classList.remove("drop")});
 document.addEventListener("drop",ev=>{const l=ev.target.closest?.("#prog-list");if(!l)return;ev.preventDefault();l.classList.remove("drop");const id=ev.dataTransfer.getData("text/plain");if(EX[id]&&addEx(id)){render();toast(`${EX[id].n} ajouté`)}});

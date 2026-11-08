@@ -55,7 +55,7 @@ function pvHome(c){
     <section class="pv-card pv-hero">
       <span class="pv-eyebrow">Votre programme</span>
       <h2>${esc(cur.name)}</h2>
-      ${cur.dx?`<p class="pv-muted">${esc(cur.dx)}</p>`:""}
+      ${cur.dx?`<p class="pv-muted" style="white-space:pre-line">${esc(cur.dx)}</p>`:""}
       <div class="pv-facts"><span>${esc(freqShort(cur))}</span><span>${cur.ex.length} exercice${cur.ex.length>1?"s":""}</span>${cur.phase?`<span>${esc(cur.phase)}</span>`:""}</div>
       ${pvWeek(c,cur)}
       <button class="pv-btn primary" data-pv-session="${cur.id}" ${cur.ex.length?"":"disabled"}>Commencer la séance</button>
@@ -88,7 +88,7 @@ function pvExercise(p,e,i,mode){
     ${open?`<div class="pv-how">
       ${fig(e.id,"lg").replace('class="fig lg"','class="fig lg" id="pv-anim"')}
       <ol class="steps">${x.steps.map(s=>`<li>${esc(s)}</li>`).join("")}</ol>
-      <div class="cue-box"><span class="eyebrow">À retenir</span><span>${esc(x.cue)}</span></div></div>`:""}
+      ${x.cue?`<div class="cue-box"><span class="eyebrow">À retenir</span><span>${esc(x.cue)}</span></div>`:""}</div>`:""}
   </li>`;
 }
 function pvProgScreen(c){
@@ -98,7 +98,7 @@ function pvProgScreen(c){
     <section class="pv-card">
       <span class="pv-eyebrow">${isCur?"Programme actuel":`Programme précédent · ${esc(dLong(p.created))}`}</span>
       <h2>${esc(p.name)}</h2>
-      ${p.dx?`<p class="pv-muted">${esc(p.dx)}</p>`:""}
+      ${p.dx?`<p class="pv-muted" style="white-space:pre-line">${esc(p.dx)}</p>`:""}
       <div class="pv-facts"><span>${esc(freqShort(p))}</span>${p.phase?`<span>${esc(p.phase)}</span>`:""}</div>
       <div class="pv-actions">
         ${isCur&&p.ex.length?`<button class="pv-btn primary" data-pv-session="${p.id}">Commencer la séance</button>`:""}

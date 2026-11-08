@@ -573,6 +573,10 @@ function openMail(cid,pid){
       <span class="muted" id="ml-from" style="font-size:.8rem"></span></div>
     <div id="ml-manual" style="display:flex;flex-direction:column;gap:12px">
       <p class="muted" style="font-size:.82rem" id="ml-why">Vérification du programme d'envoi…</p>
+      <div id="ml-share-box" hidden><span class="eyebrow">Le plus simple sur Mac</span>
+        <button type="button" class="btn primary" id="ml-share" style="width:100%;justify-content:center;margin-top:6px">${I.mail} Partager vers Mail, PDF joint</button>
+        <span class="muted" style="font-size:.8rem;display:block;margin-top:4px">Choisissez <b>Mail</b> dans le menu : le PDF et le message sont ajoutés. L'adresse du client est copiée : collez-la dans « À » avec Cmd + V. Passez ensuite à l'étape 3.</span>
+        <span class="eyebrow" style="display:block;margin-top:12px">Ou, étape par étape</span></div>
       <div><span class="eyebrow">Étape 1</span><button type="button" class="btn" id="ml-pdf" style="width:100%;justify-content:center;margin-top:6px">${I.pdf} Créer et enregistrer le PDF</button></div>
       <div><span class="eyebrow">Étape 2</span><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><a class="btn" id="ml-open" href="#" target="_blank" rel="noopener">${I.mail} Ouvrir mon courriel</a>
         <button type="button" class="btn sm" data-cf-copy="${esc(c.email)}">Copier l'adresse</button><button type="button" class="btn sm" data-cf-copy-from="ml-subject">Copier l'objet</button><button type="button" class="btn sm" data-cf-copy-from="ml-body">Copier le message</button></div>
@@ -587,6 +591,7 @@ function openMail(cid,pid){
     MAIL.base=`Bonjour ${prenom},\n\nVous trouverez votre programme d'exercices en pièce jointe.`;
     MAIL.sign=`\n\nPour toute question, écrivez-moi ou appelez-moi.${sign?`\n\n${sign}`:""}`;
     body.value=mailBody(true); mailRefresh(); mailCheckRelay();
+    $("#ml-share-box").hidden=!canShareFiles();
   }
 }
 /* Petit programme d'envoi (outils/kinoza-courriel.py) : joignable seulement depuis ce même ordinateur */
@@ -657,6 +662,33 @@ function mailRefresh(){
   const c=C(MAIL.cid), a=$("#ml-open"); if(!a) return;
   a.href=`mailto:${encodeURIComponent(c.email).replace(/%40/g,"@")}?subject=${encodeURIComponent($("#ml-subject").value)}&body=${encodeURIComponent($("#ml-body").value)}`;
 }
+/* Menu Partager du système (Safari sur Mac, iPhone…) : joint le PDF directement dans Mail.
+   Safari n'ouvre ce menu que juste après un clic : si la création du PDF a été trop longue, un deuxième clic partage le PDF déjà prêt. */
+const PDF_PROBE = ()=>{ try{ return new File(["%PDF"],"test.pdf",{type:"application/pdf"}) }catch(e){ return null } };
+const canShareFiles = ()=>{ const f=PDF_PROBE(); try{ return !!(f&&navigator.share&&navigator.canShare?.({files:[f]})) }catch(e){ return false } };
+async function mailShare(b){
+  const c=C(MAIL.cid), prog=c.progs.find(p=>p.id===MAIL.pid), prot=$("#ml-protect").checked, pw=$("#ml-pw").value.trim(), err=$("#ml-err");
+  if(prot&&pw.length<6){ err.textContent="Le mot de passe du PDF doit contenir au moins 6 caractères."; err.hidden=false; return }
+  err.hidden=true;
+  navigator.clipboard?.writeText(c.email).catch(()=>{});
+  const key=prot?"p:"+pw:"libre", label=`${I.mail} Partager vers Mail, PDF joint`;
+  if(MAIL.file?.key!==key){
+    b.disabled=true; b.textContent="Création du PDF…";
+    try{
+      const blob=await buildPDF(c,prog,{steps:true,journal:(S.settings||{}).journal!==false,notes:false,password:prot?pw:null});
+      MAIL.file={key,file:new File([blob],`Programme d'exercices - ${TODAY}.pdf`,{type:"application/pdf"})};
+    }catch(e){ b.disabled=false; b.innerHTML=label; err.textContent="Le PDF n'a pas pu être créé. Réessayez."; err.hidden=false; return }
+    b.disabled=false;
+  }
+  try{
+    await navigator.share({files:[MAIL.file.file],title:$("#ml-subject").value,text:$("#ml-body").value});
+    MAIL.saved=true; b.innerHTML=label; toast("Message prêt : vérifiez l'adresse, envoyez, puis faites l'étape 3");
+  }catch(e){
+    if(e?.name==="AbortError"){ b.innerHTML=label; return }
+    if(e?.name==="NotAllowedError"){ b.innerHTML=`${I.mail} PDF prêt : partager`; return }
+    b.innerHTML=label; err.textContent="Le menu Partager n'a pas pu s'ouvrir. Utilisez les étapes ci-dessous."; err.hidden=false;
+  }
+}
 async function mailMakePdf(b){
   const c=C(MAIL.cid), prog=c.progs.find(p=>p.id===MAIL.pid), prot=$("#ml-protect").checked, pw=$("#ml-pw").value.trim(), err=$("#ml-err");
   if(prot&&pw.length<6){ err.textContent="Le mot de passe du PDF doit contenir au moins 6 caractères."; err.hidden=false; return }
@@ -684,16 +716,17 @@ document.addEventListener("click",ev=>{
   const d=b.dataset;
   if(d.cfMail){ const [cid,pid]=d.cfMail.split(":"); openMail(cid,pid) }
   else if(b.id==="ml-pdf"){ mailMakePdf(b) }
+  else if(b.id==="ml-share"){ mailShare(b) }
   else if(b.id==="ml-send"){ mailSendDirect(b) }
   else if(d.cfCopy){ copyText(d.cfCopy,b) }
   else if(d.cfCopyFrom){ copyText($("#"+d.cfCopyFrom).value,b) }
 });
-document.addEventListener("input",ev=>{ if(MAIL&&(ev.target.id==="ml-subject"||ev.target.id==="ml-body")) mailRefresh() });
+document.addEventListener("input",ev=>{ if(MAIL&&(ev.target.id==="ml-subject"||ev.target.id==="ml-body")) mailRefresh(); if(MAIL&&ev.target.id==="ml-pw") MAIL.file=null });
 document.addEventListener("change",ev=>{
   if(ev.target.id==="ml-verified"){ $("#ml-send").disabled=!ev.target.checked; return }
   if(ev.target.id!=="ml-protect") return;
   $("#ml-pw-f").hidden=!ev.target.checked;
-  $("#ml-body").value=mailBody(ev.target.checked); mailRefresh(); MAIL.saved=false;
+  $("#ml-body").value=mailBody(ev.target.checked); mailRefresh(); MAIL.saved=false; MAIL.file=null;
 });
 document.addEventListener("submit",ev=>{
   if(ev.target.id==="cf-mail-form"){ ev.preventDefault(); if(!$("#ml-manual").hidden) submitMail() }

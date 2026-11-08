@@ -29,7 +29,10 @@ function figPNG(id){
 const pdfTxt=s=>String(s??"").replace(/→/g,"->").replace(/≥/g,">=").replace(/≤/g,"<=").replace(/[“”]/g,'"');
 function freqTxt(p){ return freqShort(p) + (fMax(p)>=2&&fMax(p)<=4?", idéalement avec une journée de repos entre deux séances":"") }
 function doseParts(e){
-  const rep=String(e.rep||"").trim(), parts=[`${e.s} série${+e.s>1?"s":""} × ${rep}${/^\d+$/.test(rep)?" rép.":""}`];
+  /* Un champ vide est retiré du programme : rien n'est affiché pour lui */
+  const s=String(e.s??"").trim(), rep=String(e.rep??"").trim(), parts=[];
+  const repTxt=rep+(/^\d+$/.test(rep)?" rép.":""), serTxt=`${s} série${+s>1?"s":""}`;
+  if(s||rep) parts.push(s&&rep?`${serTxt} × ${repTxt}`:s?serTxt:repTxt);
   if(e.t&&e.t!=="—") parts.push("Tempo "+e.t);
   if(e.rest!==""&&e.rest!=null&&+e.rest!==0) parts.push(`Repos ${e.rest} s`);
   const l=String(e.load||"").trim(); if(l&&l!=="—") parts.push(l==="PDC"?"Poids du corps":l);
@@ -64,14 +67,15 @@ async function buildPDF(c,prog,opt){
 
   /* Fiche d'identification */
   const boxY=40, colW=CW/3;
-  const cells=[["Client",c.n],["Objectif du programme",prog.dx||"—"],["Phase",prog.phase||"—"],
-    ["Fréquence",freqTxt(prog)],["Entraîneur(e)",settings.kin||"—"],["Coordonnées",settings.contact||"—"]];
-  const cellLines=cells.map(([,v])=>{set(9.5,"bold");return doc.splitTextToSize(pdfTxt(v),colW-8)});
-  const row1=Math.max(...cellLines.slice(0,3).map(l=>l.length)), row2=Math.max(...cellLines.slice(3).map(l=>l.length));
-  const r1h=8+row1*4.3, r2h=8+row2*4.3, boxH=r1h+r2h+6;
+  /* Un objectif long (un paragraphe) prend toute la largeur, sur sa propre rangée */
+  const dx=String(prog.dx||"").trim(), longDx=dx.length>60||dx.includes("\n");
+  const obj=["Objectif du programme",dx||"—"], fr=["Fréquence",freqTxt(prog)], ph=["Phase",prog.phase||"—"], kin=["Entraîneur(e)",settings.kin||"—"], co=["Coordonnées",settings.contact||"—"];
+  const rows=longDx?[[["Client",c.n],ph,fr],[kin,co],[[...obj,3]]]:[[["Client",c.n],obj,ph],[fr,kin,co]];
+  const lay=rows.map(r=>{const cl=r.map(([,v,sp])=>{set(9.5,sp?"normal":"bold");return doc.splitTextToSize(pdfTxt(v),colW*(sp||1)-8)}); return {r,cl,h:8+Math.max(...cl.map(l=>l.length))*4.3}});
+  const boxH=lay.reduce((a,x)=>a+x.h,0)+6;
   doc.setFillColor(...soft); doc.roundedRect(M,boxY,CW,boxH,2.5,2.5,"F");
-  cells.forEach(([k],i)=>{const x=M+5+(i%3)*colW, yy=boxY+6+(i<3?0:r1h);
-    label(k,x,yy); set(9.5,"bold"); doc.text(cellLines[i],x,yy+5)});
+  let ry=boxY+6;
+  lay.forEach(({r,cl,h})=>{ r.forEach(([k,,sp],i)=>{const x=M+5+i*colW; label(k,x,ry); set(9.5,sp?"normal":"bold"); doc.text(cl[i],x,ry+5)}); ry+=h });
   y=boxY+boxH+9;
 
   /* Consignes générales */
@@ -97,11 +101,11 @@ async function buildPDF(c,prog,opt){
   prog.ex.forEach((e,i)=>{
     const x=exView(prog,e.id);
     set(12,"bold"); const title=doc.splitTextToSize(pdfTxt(x.n),TW);
-    set(9,"bold"); const dose=doc.splitTextToSize(pdfTxt(doseParts(e).join("   ·   ")),TW);
+    set(9,"bold"); const dp=doseParts(e), dose=dp.length?doc.splitTextToSize(pdfTxt(dp.join("   ·   ")),TW):[];
     set(9.3,"normal"); const steps=opt.steps?x.steps.map(s=>doc.splitTextToSize(pdfTxt(s),TW-6)):[];
-    const cue=doc.splitTextToSize(pdfTxt((opt.steps?"Conseil : ":"")+x.cue),TW);
+    const cue=x.cue?doc.splitTextToSize(pdfTxt((opt.steps?"Conseil : ":"")+x.cue),TW):[];
     const note=e.note?doc.splitTextToSize(pdfTxt(e.note),TW-8):null;
-    let th=title.length*5+1.5+dose.length*4.2+3+steps.reduce((a,l)=>a+l.length*4.1+1.3,0)+cue.length*4.1+1;
+    let th=title.length*5+1.5+(dose.length?dose.length*4.2+3:0)+steps.reduce((a,l)=>a+l.length*4.1+1.3,0)+cue.length*4.1+1;
     if(note) th+=note.length*4.1+11;
     const h=Math.max(IH,th)+8;
     ensure(h);
@@ -112,9 +116,9 @@ async function buildPDF(c,prog,opt){
     set(7,"normal",muted); doc.text(pdfTxt(mgTxt(x)+" · "+x.eq),M,top+IH+4);
     let ty=top+4.2;
     set(12,"bold"); doc.text(title,TX,ty); ty+=title.length*5+1.5;
-    set(9,"bold",acc); doc.text(dose,TX,ty); ty+=dose.length*4.2+3;
+    if(dose.length){ set(9,"bold",acc); doc.text(dose,TX,ty); ty+=dose.length*4.2+3; }
     if(opt.steps){ set(9.3,"normal"); steps.forEach((l,k)=>{set(8,"bold",acc);doc.text(String(k+1)+".",TX,ty);set(9.3,"normal");doc.text(l,TX+6,ty);ty+=l.length*4.1+1.3}); }
-    set(9.3,opt.steps?"italic":"normal",opt.steps?muted:ink); doc.text(cue,TX,ty); ty+=cue.length*4.1+1;
+    if(cue.length){ set(9.3,opt.steps?"italic":"normal",opt.steps?muted:ink); doc.text(cue,TX,ty); ty+=cue.length*4.1+1; }
     if(note){ const nh=note.length*4.1+9; doc.setFillColor(...warnSoft); doc.roundedRect(TX,ty,TW,nh,1.6,1.6,"F");
       doc.setFillColor(...warn); doc.rect(TX,ty,1,nh,"F");
       set(7,"bold",warn); doc.text("CONSIGNE DE VOTRE ENTRAÎNEUR(E)",TX+4,ty+4.6,{charSpace:.3}); set(9.3,"normal"); doc.text(note,TX+4,ty+9); }

@@ -6,7 +6,7 @@ const dn=(a,l)=>[Math.sin(a*RAD)*l, Math.cos(a*RAD)*l];
 const upv=(a,l)=>[Math.sin(a*RAD)*l,-Math.cos(a*RAD)*l];
 const add=(p,v)=>[p[0]+v[0],p[1]+v[1]];
 function resolve(o){
-  const r={hd:0,cv:0,la:1,...o};
+  const r={hd:0,cv:0,la:1,sw:0,...o};
   r.hp2??=o.hp; r.kn2??=o.kn; r.ft??=o.kn+90; r.ft2??=(o.kn2!==undefined?o.kn2+90:r.ft);
   r.sh2??=o.sh; r.el2??=o.el; r.hw??=r.el; r.hw2??=r.el2;
   return r;
@@ -38,9 +38,16 @@ function kin(r){
   J.M=[(P[0]+J.N[0])/2+perp[0]*r.cv,(P[1]+J.N[1])/2+perp[1]*r.cv];
   J.K=add(P,dn(r.hp,18)); J.A=add(J.K,dn(r.kn,17)); J.T=add(J.A,dn(r.ft,6));
   J.K2=add(P,dn(r.hp2,18)); J.A2=add(J.K2,dn(r.kn2,17)); J.T2=add(J.A2,dn(r.ft2,6));
-  J.E=add(J.N,dn(r.sh,13)); J.W=add(J.E,dn(r.el,12*r.la)); J.F=add(J.W,dn(r.hw,4));
-  J.E2=add(J.N,dn(r.sh2,13)); J.W2=add(J.E2,dn(r.el2,12)); J.F2=add(J.W2,dn(r.hw2,4));
+  /* sw : écart des épaules vu du dessus (0 = couché sur le côté, épaules superposées ; + = dos à plat) */
+  J.SN=add(J.N,[perp[0]*r.sw,perp[1]*r.sw]); J.SF=add(J.N,[-perp[0]*r.sw,-perp[1]*r.sw]);
+  J.E=add(J.SN,dn(r.sh,13)); J.W=add(J.E,dn(r.el,12*r.la)); J.F=add(J.W,dn(r.hw,4));
+  if(r.ax!=null){ /* ax : bras du dessus vu du dessus, 0 = devant, 90 = vers le plafond, 180 = derrière ; il reste vis-à-vis des épaules */
+    const c=Math.cos(r.ax*RAD), f=[-perp[0]*c,-perp[1]*c];
+    J.E=add(J.SN,[f[0]*13,f[1]*13]); J.W=add(J.E,[f[0]*12,f[1]*12]); J.F=add(J.W,[f[0]*4,f[1]*4]);
+  }
+  J.E2=add(J.SF,dn(r.sh2,13)); J.W2=add(J.E2,dn(r.el2,12)); J.F2=add(J.W2,dn(r.hw2,4));
   J.face=upv(r.tr+r.hd+90,1);
+  if(r.hr!=null){ const c=Math.cos(r.hr*RAD); J.face=[-perp[0]*c,-perp[1]*c] } // hr : tête qui tourne vue du dessus, 0 = vers l'avant, 90 = vers le plafond
   return J;
 }
 function groundShift(r){
@@ -64,9 +71,9 @@ function bodySVG(J,cls){
       <circle class="hd" cx="${h[0].toFixed(1)}" cy="${h[1].toFixed(1)}" r="4.6"/>
       <circle class="hd" cx="${J.W[0].toFixed(1)}" cy="${J.W[1].toFixed(1)}" r="2.4"/></g>`;
   }
-  const far=`<path class="lim far" d="M${pt(J.P)}L${pt(J.K2)}L${pt(J.A2)}L${pt(J.T2)}M${pt(J.N)}L${pt(J.E2)}L${pt(J.W2)}L${pt(J.F2)}"/>`;
-  const trunk=`<path class="lim trunk" d="M${pt(J.P)}Q${pt(J.C)} ${pt(J.N)}"/>`;
-  const near=`<path class="lim" d="M${pt(J.P)}L${pt(J.K)}L${pt(J.A)}L${pt(J.T)}M${pt(J.N)}L${pt(J.E)}L${pt(J.W)}L${pt(J.F)}"/>`;
+  const far=`<path class="lim far" d="M${pt(J.P)}L${pt(J.K2)}L${pt(J.A2)}L${pt(J.T2)}M${pt(J.SF)}L${pt(J.E2)}L${pt(J.W2)}L${pt(J.F2)}"/>`;
+  const trunk=`<path class="lim trunk" d="M${pt(J.P)}Q${pt(J.C)} ${pt(J.N)}M${pt(J.SF)}L${pt(J.SN)}"/>`;
+  const near=`<path class="lim" d="M${pt(J.P)}L${pt(J.K)}L${pt(J.A)}L${pt(J.T)}M${pt(J.SN)}L${pt(J.E)}L${pt(J.W)}L${pt(J.F)}"/>`;
   const f=J.face, h=J.H;
   const head=`<circle class="hd" cx="${h[0].toFixed(1)}" cy="${h[1].toFixed(1)}" r="4.6"/><path class="lim nose" d="M${pt([h[0]+f[0]*3.6,h[1]+f[1]*3.6])}L${pt([h[0]+f[0]*6.4,h[1]+f[1]*6.4])}"/>`;
   return `<g class="${cls}">${far}${trunk}${head}${near}</g>`;
@@ -77,6 +84,7 @@ function propBack(p){
     case "chair": return `<g class="prop"><path d="M${p.x-12} 34V74M${p.x-12} 59H${p.x+12}M${p.x+11} 59V74"/><rect x="${p.x-12}" y="57.4" width="24" height="3" rx="1"/></g>`;
     case "bolster": return `<circle class="pad" cx="${p.x}" cy="${FLOOR-p.r}" r="${p.r}"/>`;
     case "pad": return `<rect class="pad" x="${p.x1}" y="${FLOOR-4}" width="${p.x2-p.x1}" height="4" rx="2"/>`;
+    case "matTop": return `<rect class="mat" x="${p.x1}" y="${p.y1}" width="${p.x2-p.x1}" height="${FLOOR-p.y1}" rx="2" opacity=".5"/>`; // tapis vu du dessus
     case "step": return `<rect class="prop" x="${p.x1}" y="${FLOOR-p.h}" width="${p.x2-p.x1}" height="${p.h}" rx="1"/>`;
     case "wall": return `<g class="prop"><rect x="${p.x}" y="-40" width="4" height="${FLOOR+40}"/></g>`;
     case "bench": return `<g class="prop"><rect x="${p.x1}" y="${p.y}" width="${p.x2-p.x1}" height="3" rx="1"/><path d="M${p.x1+3} ${p.y+3}V74M${p.x2-3} ${p.y+3}V74"/></g>`;
@@ -103,6 +111,7 @@ function viewBox(ex){
   let y0=Math.min(...pts.map(p=>p[1]))-7, y1=FLOOR+4;
   (ex.pr||[]).forEach(p=>{
     if(p.t==="chair"){x0=Math.min(x0,p.x-15);x1=Math.max(x1,p.x+15)}
+    if(p.t==="matTop"){x0=Math.min(x0,p.x1-3);x1=Math.max(x1,p.x2+3);y0=Math.min(y0,p.y1-3)}
     if(p.t==="step"||p.t==="pad"){x0=Math.min(x0,p.x1-3);x1=Math.max(x1,p.x2+3)}
     if(p.t==="wall"){x0=Math.min(x0,p.x-3);x1=Math.max(x1,p.x+7)}
     if(p.t==="bench"){x0=Math.min(x0,p.x1-2);x1=Math.max(x1,p.x2+2)}
